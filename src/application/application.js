@@ -1,5 +1,6 @@
 const { userRepository } = require('../repository/user-repository');
 const { conversationRepository } = require('../repository/conversation-repository');
+const { webSocketsGateway } = require('../web-sockets-gateway');
 
 class Application {
   constructor(userRepository, conversationRepository) {
@@ -11,7 +12,6 @@ class Application {
     const newUser = this.userRepository.createUser(userName);
 
     this.userRepository.getUsers().forEach((user) => {
-      console.log('Adding conversation for ', user.name, newUser.name);
       this.conversationRepository.createConversation(newUser.id, user.id);
     });
 
@@ -28,6 +28,31 @@ class Application {
         id: conversation.id,
         user: this.userRepository.getUserById(otherUserId),
       }
+    });
+  }
+
+  getConversationMessages(conversationId) {
+    return this.conversationRepository.getConversationMessages(conversationId)
+      .map(({id, text, authorId}) => {
+        const messageAuthor = this.userRepository.getUserById(authorId);
+
+        return {
+          id,
+          author: messageAuthor,
+          text,
+        };
+      });
+  }
+
+  sendMessageToConversation(message, conversationId) {
+    const newMessage = this.conversationRepository.addMessageToConversation(message, conversationId);
+
+    const messageAuthor = this.userRepository.getUserById(message.authorId);
+
+    webSocketsGateway.sendMessageToRoom(`chat/${conversationId}`, 'NEW_MESSAGE', {
+      id: newMessage.id,
+      author: messageAuthor,
+      text: message.text,
     });
   }
 }

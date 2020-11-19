@@ -2,13 +2,11 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const { usersRouter } = require('./routes/users');
 const { conversationsRouter } = require('./routes/conversations');
+const { webSocketsGateway } = require('./web-sockets-gateway');
 const app = express();
 const server = require('http').createServer(app);
-const io = require('socket.io')(server);
 
-io.on('connection', (socket) => {
-  console.log('Got connection');
-});
+webSocketsGateway.init(server);
 
 app.use(bodyParser.json());
 app.use('/users', usersRouter);
